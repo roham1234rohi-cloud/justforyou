@@ -1,0 +1,52 @@
+/* سیستم طراحی — همهٔ رنگ‌ها و اندازه‌ها از اینجا می‌آیند. */
+:root {
+  /* رنگ‌ها */
+  --midnight: #0b0b10;
+  --charcoal: #15151d;
+  --charcoal-2: #1b1b25;
+  --pink: #d89aae;
+  --pink-soft: rgba(216, 154, 174, 0.16);
+  --pink-line: rgba(216, 154, 174, 0.38);
+  --ivory: #f5f0ec;
+  --silver: #b7b5c0;
+  --mauve: #8a6479;
+  --mauve-soft: rgba(138, 100, 121, 0.28);
+  --line: rgba(183, 181, 192, 0.16);
+  --line-strong: rgba(183, 181, 192, 0.3);
+
+  --text: var(--ivory);
+  --text-muted: var(--silver);
+  --ink: #15151d; /* متن روی کاغذ عاج */
+
+  /* فونت‌ها */
+  --font-fa: 'Vazirmatn Variable', 'Vazirmatn', Tahoma, 'Segoe UI', system-ui, sans-serif;
+  --font-latin: 'Cormorant Garamond', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+
+  /* مقیاس تایپوگرافی */
+  --fs-meta: 0.8125rem;
+  --fs-small: 0.9375rem;
+  --fs-body: 1.0625rem;
+  --fs-letter: 1.125rem;
+  --fs-h2: clamp(1.5rem, 5.6vw, 2.1rem);
+  --lh-body: 1.95;
+  --lh-letter: 2.1;
+
+  /* فاصله‌ها */
+  --gutter: clamp(1.25rem, 6vw, 2rem);
+  --measure: 34rem;
+  --radius-s: 8px;
+  --radius-m: 16px;
+  --radius-l: 24px;
+
+  /* حرکت */
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --dur-slow: 1.1s;
+  --dur: 0.6s;
+  --dur-fast: 0.25s;
+
+  /* ماه */
+  --moon-size: clamp(190px, 58vw, 360px);
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}

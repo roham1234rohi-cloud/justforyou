@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>بازبینی پیام‌ها — Just For You</title>
+<style>
+:root{--bg:#0B0B10;--panel:#15151D;--pink:#D89AAE;--ivory:#F5F0EC;--silver:#B7B5C0;--line:rgba(183,181,192,.18);--ok:#8fc9a3;--no:#e19a9a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ivory);font:16px/1.9 Vazirmatn,Tahoma,"Segoe UI",system-ui,sans-serif;padding-bottom:6rem}
+header.top{position:sticky;top:0;z-index:5;background:rgba(11,11,16,.96);border-bottom:1px solid var(--line);padding:.8rem 1rem}
+h1{font-size:1.05rem;margin:0 0 .3rem;font-weight:600}
+.warn{color:var(--silver);font-size:.82rem;line-height:1.8;margin:0 0 .6rem}
+.stats{display:flex;gap:1rem;font-size:.85rem;color:var(--silver);flex-wrap:wrap;margin-bottom:.6rem}
+.stats b{color:var(--ivory)}
+.bar{display:flex;gap:.5rem;flex-wrap:wrap}
+button{font:inherit;color:var(--ivory);background:transparent;border:1px solid var(--line);border-radius:999px;padding:.35rem 1rem;min-height:44px;cursor:pointer}
+button:hover{border-color:var(--pink)}
+button.primary{border-color:var(--pink);background:rgba(216,154,174,.14)}
+button.on-ok{background:rgba(143,201,163,.18);border-color:var(--ok);color:var(--ok)}
+button.on-no{background:rgba(225,154,154,.16);border-color:var(--no);color:var(--no)}
+.filters{margin-top:.6rem;display:flex;gap:.4rem;flex-wrap:wrap}
+.filters button{min-height:38px;font-size:.82rem}
+.filters button[aria-pressed=true]{border-color:var(--pink);background:rgba(216,154,174,.14)}
+main{max-width:42rem;margin:0 auto;padding:1rem}
+section.ex{border:1px solid var(--line);border-radius:16px;background:var(--panel);margin:0 0 1.4rem;padding:1rem}
+section.ex h2{font-size:1rem;margin:0;font-weight:600}
+.cat{color:var(--pink);font-size:.8rem}
+.exbar{display:flex;gap:.4rem;flex-wrap:wrap;margin:.6rem 0 .8rem}
+.exbar button{min-height:38px;font-size:.8rem}
+.msg{border-top:1px solid var(--line);padding:.7rem 0}
+.meta{font-size:.78rem;color:var(--silver)}
+.meta .who{color:var(--pink)}
+.text{white-space:pre-wrap;unicode-bidi:plaintext;text-align:start;margin:.15rem 0 .5rem;overflow-wrap:anywhere}
+.actions{display:flex;gap:.4rem}
+.actions button{min-height:40px;font-size:.85rem;padding:.2rem 1.1rem}
+.out{margin:1rem 0;padding:1rem;border:1px dashed var(--line);border-radius:14px;color:var(--silver);font-size:.85rem}
+.toast{position:fixed;bottom:1rem;inset-inline:1rem;margin:auto;max-width:22rem;text-align:center;background:var(--panel);border:1px solid var(--pink);border-radius:999px;padding:.5rem 1rem;opacity:0;pointer-events:none;transition:opacity .3s}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>بازبینی پیام‌ها — فقط خودت می‌بینی</h1>
+  <p class="warn">هیچ پیامی بدون تأییدِ صریحِ تو وارد سایت نمی‌شود. این فایل را جایی منتشر نکن. انتخاب‌هایت فقط در همین مرورگر ذخیره می‌شود.</p>
+  <div class="stats"><span>تأییدشده: <b id="nOk">0</b></span><span>ردشده: <b id="nNo">0</b></span><span>تصمیم‌نگرفته: <b id="nPend">0</b></span></div>
+  <div class="bar">
+    <button class="primary" id="btnJson">دانلود approvals.json</button>
+    <button id="btnTs">کپی approvedMessages.ts</button>
+    <button id="btnReset">پاک کردن انتخاب‌ها</button>
+  </div>
+  <div class="filters" id="filters" role="group" aria-label="فیلتر"></div>
+</header>
+<main id="list"></main>
+<div class="out">
+  <b>بعد از تأیید چه کنم؟</b><br>
+  ۱) «دانلود approvals.json» را بزن و فایل را در پوشهٔ <code>review/</code> پروژه بگذار، بعد در ترمینال <code>npm run approve</code> را اجرا کن.<br>
+  ۲) یا «کپی approvedMessages.ts» را بزن و محتوا را کامل جای محتوای <code>src/data/approvedMessages.ts</code> بگذار (مثلاً با ویرایشگر وب گیت‌هاب).
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script id="pure">
+/* ===== منطق خالص (در تست هم استفاده می‌شود) ===== */
+function buildApproved(candidates, approvedIds) {
+  var ids = new Set(approvedIds), out = [];
+  candidates.forEach(function (ex) {
+    var pushed = false;
+    ex.messages.forEach(function (m, i) {
+      if (!ids.has(m.id)) return;
+      var prevApproved = i > 0 && ids.has(ex.messages[i - 1].id);
+      var item = { id: m.id, sender: m.sender, date: m.date, time: m.time, text: m.text,
+        excerptId: ex.id, excerptTitle: ex.title, category: ex.category };
+      if (pushed && !prevApproved) item.gapBefore = true;
+      pushed = true;
+      out.push(item);
+    });
+  });
+  return out;
+}
+function renderApprovedTs(header, list) {
+  return header + JSON.stringify(list, null, 1) + ' /* END_DATA */;\n';
+}
+</script>
+<script id="app">
+var CANDIDATES = [{"id": "c01", "category": "humor", "title": "بحثِ تقصیر", "messages": [{"id": "m71056", "sender": "raham", "date": "2026/10/21", "time": "23:43:36", "text": "اصلا تقصیر تو بود که من دیدم"}, {"id": "m71057", "sender": "setareh", "date": "2026/10/21", "time": "23:43:55", "text": "چرااااا🤨🤣"}, {"id": "m71058", "sender": "raham", "date": "2026/10/21", "time": "23:44:57", "text": "تقصیر توعه دیگه"}, {"id": "m71059", "sender": "setareh", "date": "2026/10/21", "time": "23:45:54", "text": "نوچ‌نوچچچچ به من چههه🤣🤣🤣"}, {"id": "m71061", "sender": "raham", "date": "2026/10/21", "time": "23:48:39", "text": "تقصیرر توعههههههه"}, {"id": "m71066", "sender": "setareh", "date": "2026/10/21", "time": "23:49:22", "text": "نهههههه"}]}, {"id": "c02", "category": "humor", "title": "غلام‌رضا", "messages": [{"id": "m71239", "sender": "raham", "date": "2026/10/22", "time": "01:46:08", "text": "من هنوز غلام رضا سیوت دارم"}, {"id": "m71243", "sender": "setareh", "date": "2026/10/22", "time": "01:46:20", "text": "ها نهههههه🫪🫪🫪🫪🫪🫪"}, {"id": "m71246", "sender": "setareh", "date": "2026/10/22", "time": "01:46:29", "text": "چه غلام رضا مهربونی"}, {"id": "m71249", "sender": "raham", "date": "2026/10/22", "time": "01:46:36", "text": "خیلی"}, {"id": "m71254", "sender": "raham", "date": "2026/10/22", "time": "01:46:54", "text": "خیلی مهربون"}, {"id": "m71259", "sender": "setareh", "date": "2026/10/22", "time": "01:47:28", "text": "پس چی؟🤨 مهربونه دیگهه🤣"}, {"id": "m71260", "sender": "raham", "date": "2026/10/22", "time": "01:47:49", "text": "هیچی هیچی بهترینی"}, {"id": "m71267", "sender": "setareh", "date": "2026/10/22", "time": "01:48:50", "text": "بله بلههه مچکرمممم😂😭"}]}, {"id": "c03", "category": "humor", "title": "سی‌وچهار بار", "messages": [{"id": "m72867", "sender": "raham", "date": "2026/10/23", "time": "18:32:51", "text": "یه دختره رو ۳۴ بار تو گیم زدم فشاری شد لف داد"}, {"id": "m72868", "sender": "setareh", "date": "2026/10/23", "time": "18:33:37", "text": "وااااییییی🤣🤣🤣🤣🤣🤣🤣🤣🤣🤣🤣🤣🤣🤣🤣🤣🤣🤣🤣🤣🤣🤣🤣🤣"}, {"id": "m72869", "sender": "raham", "date": "2026/10/23", "time": "18:33:49", "text": "😏😏😏"}]}, {"id": "c04", "category": "humor", "title": "هوش مصنوعی", "messages": [{"id": "m73271", "sender": "raham", "date": "2026/10/25", "time": "18:38:16", "text": "یه هوش مصنوعی هم ساختم بدون نت بدون آنتن کار میکنه ۲۷ میلیارد دیتا داره"}, {"id": "m73272", "sender": "raham", "date": "2026/10/25", "time": "18:38:20", "text": "خفنیما"}, {"id": "m73273", "sender": "raham", "date": "2026/10/25", "time": "18:38:29", "text": "گوگل بیاد استخدامم کنه"}, {"id": "m73274", "sender": "setareh", "date": "2026/10/25", "time": "18:38:30", "text": "برگاممممم"}, {"id": "m73276", "sender": "setareh", "date": "2026/10/25", "time": "18:38:39", "text": "هموننن"}]}, {"id": "c05", "category": "humor", "title": "اینستا و یه سوءتفاهم", "messages": [{"id": "m73351", "sender": "raham", "date": "2026/10/25", "time": "19:54:03", "text": "اها"}, {"id": "m73352", "sender": "raham", "date": "2026/10/25", "time": "19:54:05", "text": "وای منو خرو"}, {"id": "m73353", "sender": "raham", "date": "2026/10/25", "time": "19:54:11", "text": "اینستاتو پاک کردی"}, {"id": "m73354", "sender": "raham", "date": "2026/10/25", "time": "19:54:18", "text": "فکر کردم ایدیتو برا من پاک کردی"}, {"id": "m73355", "sender": "setareh", "date": "2026/10/25", "time": "19:54:50", "text": "واااااییی🤣🤣🤣🤣🤣🤣🤣🤣🤣🤣🤣🤣🤣🤣🤣"}, {"id": "m73356", "sender": "setareh", "date": "2026/10/25", "time": "19:54:52", "text": "اشکال ندارهه"}, {"id": "m73357", "sender": "setareh", "date": "2026/10/25", "time": "19:54:54", "text": "پیش میادد"}]}, {"id": "c06", "category": "humor", "title": "حسش نیست", "messages": [{"id": "m73317", "sender": "setareh", "date": "2026/10/25", "time": "19:41:48", "text": "حوصلم سر رفته"}, {"id": "m73318", "sender": "setareh", "date": "2026/10/25", "time": "19:41:51", "text": "خوابم میاد"}, {"id": "m73319", "sender": "setareh", "date": "2026/10/25", "time": "19:41:52", "text": "درس دارم"}, {"id": "m73320", "sender": "setareh", "date": "2026/10/25", "time": "19:41:58", "text": "موهام خیسه"}, {"id": "m73321", "sender": "raham", "date": "2026/10/25", "time": "19:42:02", "text": "برو درس بخون"}, {"id": "m73323", "sender": "setareh", "date": "2026/10/25", "time": "19:42:08", "text": "حسش نیستت"}, {"id": "m73324", "sender": "raham", "date": "2026/10/25", "time": "19:42:17", "text": "هیچوقت حسش نیست"}]}, {"id": "c07", "category": "humor", "title": "ساعت هفت صبح", "messages": [{"id": "m73110", "sender": "setareh", "date": "2026/10/24", "time": "21:50:55", "text": "شاید باورت نشه"}, {"id": "m73111", "sender": "setareh", "date": "2026/10/24", "time": "21:51:02", "text": "ولی اون موقع من توی خواب نازم بودم"}, {"id": "m73113", "sender": "setareh", "date": "2026/10/24", "time": "21:51:40", "text": "در عوض ۷ صبححححح جواب دادمممم"}, {"id": "m73114", "sender": "setareh", "date": "2026/10/24", "time": "21:51:45", "text": "صبح زودددد"}]}, {"id": "c08", "category": "memories", "title": "مدرسه یا اینترنت", "messages": [{"id": "m71107", "sender": "raham", "date": "2026/10/22", "time": "01:19:27", "text": "مدرسه تون بی مدرسه"}, {"id": "m71109", "sender": "setareh", "date": "2026/10/22", "time": "01:19:42", "text": "فکککک نکنممم🤣🤣🤣🤣🤣🤣"}, {"id": "m71127", "sender": "setareh", "date": "2026/10/22", "time": "01:22:45", "text": "مهم نیستتت قطع شه نت فقط نرم مدرسه🤣🤣🤣🤣"}, {"id": "m71129", "sender": "setareh", "date": "2026/10/22", "time": "01:22:52", "text": "نه شوخی میکنم نت مهم ترینهه"}]}, {"id": "c09", "category": "memories", "title": "اولین تبریک", "messages": [{"id": "m71225", "sender": "raham", "date": "2026/10/22", "time": "01:45:14", "text": "روزم مبارک"}, {"id": "m71226", "sender": "raham", "date": "2026/10/22", "time": "01:45:15", "text": "هوم"}, {"id": "m71227", "sender": "raham", "date": "2026/10/22", "time": "01:45:21", "text": "کسی بهم تبریک نگفت"}, {"id": "m71229", "sender": "raham", "date": "2026/10/22", "time": "01:45:28", "text": "فردا ببینم کسی میگه یا نه"}, {"id": "m71230", "sender": "setareh", "date": "2026/10/22", "time": "01:45:40", "text": "روزتت مبارکککک‌پسر قوی"}, {"id": "m71232", "sender": "raham", "date": "2026/10/22", "time": "01:45:50", "text": "قربونتتتت"}, {"id": "m71234", "sender": "raham", "date": "2026/10/22", "time": "01:45:56", "text": "نفر اول"}, {"id": "m71236", "sender": "setareh", "date": "2026/10/22", "time": "01:46:03", "text": "اخ جوننن"}]}, {"id": "c10", "category": "memories", "title": "جمعه‌ها", "messages": [{"id": "m72698", "sender": "setareh", "date": "2026/10/23", "time": "14:53:08", "text": "وای چقدر جمعسسسس امروز اه"}, {"id": "m72718", "sender": "raham", "date": "2026/10/23", "time": "14:55:53", "text": "بدم میاد از جمعه"}, {"id": "m72729", "sender": "setareh", "date": "2026/10/23", "time": "14:58:52", "text": "منم بخدا"}, {"id": "m72730", "sender": "raham", "date": "2026/10/23", "time": "14:58:57", "text": "یجوریه"}, {"id": "m72734", "sender": "setareh", "date": "2026/10/23", "time": "14:59:26", "text": "خیلی خداییی"}]}, {"id": "c11", "category": "memories", "title": "ماشین و رنگ", "messages": [{"id": "m72536", "sender": "raham", "date": "2026/10/23", "time": "12:41:22", "text": "نمیدونم تو دلمه gt86 بگیرم"}, {"id": "m72538", "sender": "setareh", "date": "2026/10/23", "time": "12:41:50", "text": "خفنهههه"}, {"id": "m72542", "sender": "raham", "date": "2026/10/23", "time": "12:42:48", "text": "چه رنگییی"}, {"id": "m72545", "sender": "setareh", "date": "2026/10/23", "time": "12:43:42", "text": "صد در صدددد مشکی ولی هر چی خودت دوست داری"}, {"id": "m72546", "sender": "raham", "date": "2026/10/23", "time": "12:44:11", "text": "خب مشکی"}]}, {"id": "c12", "category": "memories", "title": "گیتار", "messages": [{"id": "m73212", "sender": "raham", "date": "2026/10/25", "time": "14:52:26", "text": "اینم با گیتار میزدم خیلی قشنگه"}, {"id": "m73216", "sender": "setareh", "date": "2026/10/25", "time": "14:52:52", "text": "ای کاش الانم بزنیی"}, {"id": "m73218", "sender": "raham", "date": "2026/10/25", "time": "14:53:55", "text": "دوتا گیتارم رو گرفتن ازم ندارم باید بخرم\nبخرم میزنم ویس میگیرم"}, {"id": "m73223", "sender": "setareh", "date": "2026/10/25", "time": "14:54:45", "text": "بخررر💔"}, {"id": "m73230", "sender": "raham", "date": "2026/10/25", "time": "14:56:44", "text": "چشم"}, {"id": "m73234", "sender": "setareh", "date": "2026/10/25", "time": "14:59:20", "text": "افریننن"}]}, {"id": "c13", "category": "memories", "title": "پروفایل", "messages": [{"id": "m72558", "sender": "raham", "date": "2026/10/23", "time": "12:53:28", "text": "پروفایلمو مامانم گفت بزارم🤣"}, {"id": "m72560", "sender": "setareh", "date": "2026/10/23", "time": "12:54:32", "text": "خوب گفتتتتتت مامانت"}, {"id": "m72561", "sender": "raham", "date": "2026/10/23", "time": "12:54:45", "text": "واقعا؟ زیاد دوسش ندارم چون اون گفت گذاشتم"}, {"id": "m72562", "sender": "setareh", "date": "2026/10/23", "time": "12:55:56", "text": "خیلییی قشنگههه"}]}, {"id": "c14", "category": "memories", "title": "چشم باحال شده؟", "messages": [{"id": "m73334", "sender": "raham", "date": "2026/10/25", "time": "19:50:58", "text": "بزارم پروفایلم؟"}, {"id": "m73335", "sender": "setareh", "date": "2026/10/25", "time": "19:51:25", "text": "بزاررررررررر"}, {"id": "m73337", "sender": "raham", "date": "2026/10/25", "time": "19:51:33", "text": "چشم باحال شده؟"}, {"id": "m73339", "sender": "setareh", "date": "2026/10/25", "time": "19:51:42", "text": "ارههههههه"}]}, {"id": "c15", "category": "memories", "title": "شبی که نت داغون بود", "messages": [{"id": "m73657", "sender": "raham", "date": "2026/10/25", "time": "21:17:48", "text": "نت خیلی بده"}, {"id": "m73658", "sender": "setareh", "date": "2026/10/25", "time": "21:18:03", "text": "داغونههه"}, {"id": "m73667", "sender": "raham", "date": "2026/10/25", "time": "21:20:55", "text": "احساس میکنم شب آخریه که باهات حرف میزنم نتا قراره قطع شه"}, {"id": "m73669", "sender": "setareh", "date": "2026/10/25", "time": "21:21:02", "text": "دقیقااااااا"}]}, {"id": "c16", "category": "meaningful", "title": "آرزو", "messages": [{"id": "m72574", "sender": "raham", "date": "2026/10/23", "time": "14:01:07", "text": "راستی آرزوت چیه"}, {"id": "m72581", "sender": "setareh", "date": "2026/10/23", "time": "14:01:52", "text": "ندارم هیچی"}, {"id": "m72595", "sender": "raham", "date": "2026/10/23", "time": "14:03:10", "text": "هیچ ارزویی نداری؟؟"}, {"id": "m72597", "sender": "setareh", "date": "2026/10/23", "time": "14:03:35", "text": "نه💔"}, {"id": "m72600", "sender": "raham", "date": "2026/10/23", "time": "14:06:59", "text": "من ارزوم اینه برم نیویورک بعد برم دونات اونجا رو بخورم و بازی بسکتبال ببینم"}, {"id": "m72602", "sender": "setareh", "date": "2026/10/23", "time": "14:07:55", "text": "واییییی چه قشنگگگگگ"}, {"id": "m72604", "sender": "raham", "date": "2026/10/23", "time": "14:08:13", "text": "آرزوم خیلی عجیبه"}, {"id": "m72613", "sender": "setareh", "date": "2026/10/23", "time": "14:10:40", "text": "ولی خیلی نازههه"}]}, {"id": "c17", "category": "meaningful", "title": "قول", "messages": [{"id": "m73688", "sender": "raham", "date": "2026/10/25", "time": "21:24:31", "text": "واقعا خیلی خوشگلی چجور دلت میاد اینجوری به خودت میگی"}, {"id": "m73689", "sender": "setareh", "date": "2026/10/25", "time": "21:24:41", "text": "🫠🫠🫠🫠🫠🫠🫠🫠🫠🫠🫠🫠🫠"}, {"id": "m73691", "sender": "raham", "date": "2026/10/25", "time": "21:25:32", "text": "قول بده دیگه نگی باشه؟"}, {"id": "m73692", "sender": "setareh", "date": "2026/10/25", "time": "21:25:45", "text": "باشه باشهه"}, {"id": "m73693", "sender": "raham", "date": "2026/10/25", "time": "21:25:54", "text": "قولت کو؟"}, {"id": "m73694", "sender": "setareh", "date": "2026/10/25", "time": "21:26:00", "text": "قول دیگهه"}, {"id": "m73696", "sender": "raham", "date": "2026/10/25", "time": "21:26:19", "text": "افرین خوشگل خانوم"}, {"id": "m73698", "sender": "setareh", "date": "2026/10/25", "time": "21:26:52", "text": "جیگلیلیییی"}]}];
+var HEADER = "import type { ApprovedMessage } from './types';\n\n/**\n * پیام‌های تأییدشده — تنها چیزی که در بخش «خاطرات ما» نمایش داده می‌شود.\n *\n * این فایل را دستی ویرایش نکن؛ با `npm run approve` ساخته می‌شود\n * (یا خروجیِ دکمهٔ «کپی approvedMessages.ts» در review/review.html را اینجا بگذار).\n * تا وقتی لیست خالی است، سایت درست کار می‌کند و یک پیام ملایمِ «در حال نوشته‌شدن» نشان می‌دهد.\n */\nexport const approvedMessages: ApprovedMessage[] = /* BEGIN_DATA */ ";
+var KEY = 'jfy-review-v1';
+var NAMES = { raham: 'رهام', setareh: 'ستاره' };
+var CATS = { humor: 'شوخی', memories: 'خاطره‌های مشترک', meaningful: 'حرف‌های ماندگار' };
+var state = {};
+try { state = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { state = {}; }
+var filter = 'all';
+
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+function toast(t) { var el = document.getElementById('toast'); el.textContent = t; el.classList.add('show'); setTimeout(function () { el.classList.remove('show'); }, 1800); }
+function set(id, v) { if (state[id] === v) delete state[id]; else state[id] = v; save(); render(); }
+function setAll(ex, v) { ex.messages.forEach(function (m) { state[m.id] = v; }); save(); render(); }
+function approvedIds() { var r = []; CANDIDATES.forEach(function (ex) { ex.messages.forEach(function (m) { if (state[m.id] === 'ok') r.push(m.id); }); }); return r; }
+
+function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+function btn(label, cls, fn) { var b = el('button', cls, label); b.type = 'button'; b.addEventListener('click', fn); return b; }
+
+function render() {
+  var list = document.getElementById('list'); list.textContent = '';
+  var ok = 0, no = 0, total = 0;
+  CANDIDATES.forEach(function (ex) { ex.messages.forEach(function (m) { total++; if (state[m.id] === 'ok') ok++; else if (state[m.id] === 'no') no++; }); });
+  document.getElementById('nOk').textContent = ok;
+  document.getElementById('nNo').textContent = no;
+  document.getElementById('nPend').textContent = total - ok - no;
+
+  CANDIDATES.forEach(function (ex) {
+    if (filter !== 'all' && ex.category !== filter) return;
+    var sec = el('section', 'ex');
+    sec.appendChild(el('h2', null, ex.title));
+    sec.appendChild(el('div', 'cat', CATS[ex.category] || ex.category));
+    var bar = el('div', 'exbar');
+    bar.appendChild(btn('تأییدِ همهٔ این قطعه', null, function () { setAll(ex, 'ok'); }));
+    bar.appendChild(btn('ردِّ همه', null, function () { setAll(ex, 'no'); }));
+    sec.appendChild(bar);
+    ex.messages.forEach(function (m) {
+      var row = el('div', 'msg');
+      var meta = el('div', 'meta');
+      var who = el('span', 'who', NAMES[m.sender] || m.sender);
+      meta.appendChild(who);
+      meta.appendChild(document.createTextNode(' · ' + m.date + ' · ' + m.time + ' · ' + m.id));
+      row.appendChild(meta);
+      var t = el('div', 'text', m.text); t.setAttribute('dir', 'auto'); row.appendChild(t);
+      var act = el('div', 'actions');
+      act.appendChild(btn('تأیید', state[m.id] === 'ok' ? 'on-ok' : '', function () { set(m.id, 'ok'); }));
+      act.appendChild(btn('ردّ', state[m.id] === 'no' ? 'on-no' : '', function () { set(m.id, 'no'); }));
+      row.appendChild(act);
+      sec.appendChild(row);
+    });
+    list.appendChild(sec);
+  });
+}
+
+function renderFilters() {
+  var f = document.getElementById('filters'); f.textContent = '';
+  [['all', 'همه'], ['humor', 'شوخی'], ['memories', 'خاطره‌ها'], ['meaningful', 'حرف‌های ماندگار']].forEach(function (p) {
+    var b = btn(p[1], '', function () { filter = p[0]; renderFilters(); render(); });
+    b.setAttribute('aria-pressed', String(filter === p[0]));
+    f.appendChild(b);
+  });
+}
+
+document.getElementById('btnJson').addEventListener('click', function () {
+  var rejected = []; CANDIDATES.forEach(function (ex) { ex.messages.forEach(function (m) { if (state[m.id] === 'no') rejected.push(m.id); }); });
+  var data = JSON.stringify({ version: 1, approved: approvedIds(), rejected: rejected }, null, 1);
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
+  a.download = 'approvals.json'; document.body.appendChild(a); a.click(); a.remove();
+  toast('approvals.json دانلود شد');
+});
+document.getElementById('btnTs').addEventListener('click', function () {
+  var ts = renderApprovedTs(HEADER, buildApproved(CANDIDATES, approvedIds()));
+  function done() { toast('کپی شد — در approvedMessages.ts بچسبان'); }
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ts).then(done, function () { window.prompt('این متن را کپی کن:', ts); });
+  else window.prompt('این متن را کپی کن:', ts);
+});
+document.getElementById('btnReset').addEventListener('click', function () {
+  if (window.confirm('همهٔ انتخاب‌ها پاک شود؟')) { state = {}; save(); render(); }
+});
+renderFilters(); render();
+</script>
+</body>
+</html>

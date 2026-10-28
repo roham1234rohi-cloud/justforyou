@@ -1,0 +1,117 @@
+.sky {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background: var(--midnight);
+  pointer-events: none;
+}
+
+.sky__gradient {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(216, 154, 174, 0.07), transparent 70%),
+    radial-gradient(ellipse 70% 40% at 20% 100%, rgba(138, 100, 121, 0.1), transparent 70%),
+    linear-gradient(180deg, #0b0b10 0%, #101018 55%, #15151d 100%);
+}
+
+.sky__stars {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  animation: sky-drift 140s linear infinite alternate;
+}
+
+@keyframes sky-drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-14px, 9px, 0);
+  }
+}
+
+.sky__anchor {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  will-change: transform, opacity;
+}
+
+.sky__halo {
+  position: absolute;
+  left: calc(var(--moon-size) * -1.1);
+  top: calc(var(--moon-size) * -1.1);
+  width: calc(var(--moon-size) * 2.2);
+  height: calc(var(--moon-size) * 2.2);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(245, 240, 236, 0.1) 0%, rgba(216, 154, 174, 0.06) 38%, transparent 68%);
+  animation: halo-breathe 16s ease-in-out infinite;
+}
+
+@keyframes halo-breathe {
+  0%,
+  100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+.moon {
+  position: absolute;
+  left: calc(var(--moon-size) / -2);
+  top: calc(var(--moon-size) / -2);
+  width: var(--moon-size);
+  height: var(--moon-size);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 63% 30%, rgba(58, 56, 74, 0.5) 0 5.5%, transparent 6.5%),
+    radial-gradient(circle at 36% 58%, rgba(58, 56, 74, 0.42) 0 9%, transparent 10.5%),
+    radial-gradient(circle at 55% 74%, rgba(58, 56, 74, 0.38) 0 6%, transparent 7.2%),
+    radial-gradient(circle at 27% 27%, rgba(58, 56, 74, 0.34) 0 4%, transparent 5.2%),
+    radial-gradient(circle at 75% 56%, rgba(58, 56, 74, 0.3) 0 7%, transparent 8.5%),
+    radial-gradient(ellipse at 46% 44%, rgba(84, 82, 102, 0.3) 0%, transparent 42%),
+    radial-gradient(circle at 38% 34%, #f3eee9 0%, #d8d2d5 34%, #a19ca9 66%, #5c5a6b 100%);
+  box-shadow:
+    inset -18px -10px 44px rgba(11, 11, 16, 0.55),
+    0 0 90px rgba(216, 154, 174, 0.1);
+  opacity: 0.93;
+}
+
+.moon::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 28% 30%, transparent 36%, rgba(11, 11, 16, 0.64) 82%);
+}
+
+.sky__vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 40%, transparent 40%, rgba(11, 11, 16, 0.65) 100%);
+}
+
+.sky__grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.06;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+}
+
+/* پوشش تیره روی آسمان در فصل‌ها تا متن خوانا بماند */
+.sky__veil {
+  position: absolute;
+  inset: 0;
+  background: rgba(11, 11, 16, 0.38);
+  transition: opacity 1.2s var(--ease);
+}

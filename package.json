@@ -1,0 +1,31 @@
+{
+  "name": "just-for-you",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Just For You — a private cinematic journal",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "dev": "vite",
+    "build": "node scripts/verify-data.mjs && vite build && node scripts/check-dist.mjs",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "verify": "node scripts/verify-data.mjs",
+    "approve": "node scripts/apply-approvals.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/vazirmatn": "^5.0.0",
+    "@fontsource/cormorant-garamond": "^5.0.0",
+    "framer-motion": "^11.11.17",
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}
